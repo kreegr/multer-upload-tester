@@ -6,44 +6,46 @@ var uploadDest = require('./thumbnail-upload-path');
 
 var checkOffSteps = [
     'onParseStart',
-    'onError',
     'onFileUploadData',
     'onFileUploadComplete',
     'onParseEnd'
 ];
 
 var checks;
-var checkoff = function(field, err){
-    logger.info(field);
-    err && logger.error(err);
-    checks[field] = 'okay';
+var onError = false;
+var pass = function(field){
+    checks[field] = "PASS";
 };
-var resetChecks = function(){
-    checks = {};
-    checkOffSteps.forEach(function(key){
-        checks[key] = 'failed'
-    });
+var fail = function(field){
+    checks[field] = "FAIL";
 };
 
+var resetChecks = function(){
+    checks = {};
+    onError = false;
+    _.each(checkOffSteps, function(step){
+        fail(step);
+    });
+};
 resetChecks();
 
 var multerBodyParser = require('multer')({
     dest: uploadDest
     ,
     onParseStart : function(){
-        checkoff('onParseStart');
+        pass('onParseStart');
     },
     onError : function(err){
-        checkoff('onError', err);
+        onError = err;
     },
     onFileUploadData : function(file, data, req, res){
-        checkoff('onFileUploadData');
+        pass('onFileUploadData');
     },
     onFileUploadComplete : function(file, req, res){
-        checkoff('onFileUploadComplete');
+        pass('onFileUploadComplete');
     },
     onParseEnd : function(req, next){
-        checkoff('onParseEnd');
+        pass('onParseEnd');
         next();
     }
 }); // for handling multipart/form-data
@@ -82,13 +84,24 @@ var setWindsId = function setWindsId(req, res, next){
 };
 
 var renderResponse = function renderResponse(req, res, next){
-    var files = _.omit(req.files, 'path');
+    var files = _.chain(req.files)
+        .map(function(file){
+            return _.omit(file, 'path')
+        })
+        .value();
+
     var json = _.extend({
         files : files
-    }, {
-        checks : checks
     });
+
+    if (onError){
+        json.err = onError;
+    } else {
+        json.checks = checks;onError
+    }
+
     res.json(json);
+    logger.info('Response Sent!' , {response:json});
     resetChecks();
 };
 
