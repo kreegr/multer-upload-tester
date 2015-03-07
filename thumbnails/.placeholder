@@ -1,0 +1,5 @@
+This is directory is where thumbnail files are uploaded to, temporarily before being uploaded to s3.
+@see prepublish/index
+
+This file, is a placeholder so that the directory is commited to git.
+Alternatively, this directory could be created with a build (grunt, etc)
